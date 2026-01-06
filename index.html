@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instant File Converter - Secure & Fast</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="javascript:history.go(-1)" class="nav-back"><i class="fas fa-arrow-left"></i></a>
+            <a href="#" class="logo"><i class="fas fa-sync-alt"></i> FileConvert</a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#history">History</a>
+            </div>
+            <div class="mobile-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container hero-content">
+            <div id="mainView">
+                <h1>Every tool you need to work with Files</h1>
+                <p>100% Free and Easy to use! Merge, split, compress, convert, rotate, unlock and watermark PDFs with
+                    just a few clicks.</p>
+
+                <div class="tools-grid">
+                    <div class="tool-card" data-mode="jpg-to-pdf" data-accept="image/*">
+                        <div class="tool-icon"><i class="fas fa-file-image"></i></div>
+                        <h3>JPG to PDF</h3>
+                        <p>Convert JPG images to PDF in seconds. Easily adjust orientation and margins.</p>
+                    </div>
+
+                    <div class="tool-card" data-mode="pdf-to-jpg" data-accept=".pdf">
+                        <div class="tool-icon"><i class="fas fa-file-pdf"></i></div>
+                        <h3>PDF to JPG</h3>
+                        <p>Convert each PDF page into a JPG or extract all images contained in a PDF.</p>
+                    </div>
+
+                    <div class="tool-card" data-mode="ppt-to-pdf" data-accept=".ppt,.pptx">
+                        <div class="tool-icon"><i class="fas fa-file-powerpoint"></i></div>
+                        <h3>PPT to PDF</h3>
+                        <p>Make PPT and PPTX slideshows easy to view by converting them to PDF.</p>
+                    </div>
+
+                    <div class="tool-card" data-mode="pdf-to-ppt" data-accept=".pdf">
+                        <div class="tool-icon"><i class="fas fa-file-pdf"></i></div>
+                        <h3>PDF to PPT</h3>
+                        <p>Turn your PDF files into easy to edit PPT and PPTX slideshows.</p>
+                    </div>
+
+                    <div class="tool-card" data-mode="pdf-to-word" data-accept=".pdf">
+                        <div class="tool-icon"><i class="fas fa-file-word"></i></div>
+                        <h3>PDF to Word</h3>
+                        <p>Convert your PDF to WORD documents with incredible accuracy.</p>
+                    </div>
+
+                    <div class="tool-card" data-mode="word-to-pdf" data-accept=".doc,.docx">
+                        <div class="tool-icon"><i class="fas fa-file-word"></i></div>
+                        <h3>Word to PDF</h3>
+                        <p>Make DOC and DOCX files easy to read by converting them to PDF.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Zone Section (Initially Hidden) -->
+            <div id="converterView" style="display: none;">
+                <button id="backBtn" class="btn btn-sm btn-outline"><i class="fas fa-arrow-left"></i> Back to
+                    Tools</button>
+                <h2 id="toolTitle" style="margin: 1rem 0;">Convert Files</h2>
+
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-content">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <h3>Drop files here or click to browse</h3>
+                        <p class="limit-text">Max file size: 5MB</p>
+                        <input type="file" id="fileInput" hidden>
+                        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Browse
+                            Files</button>
+                        <p id="acceptText" style="margin-top:0.5rem; font-size:0.8rem; color:#ccc;"></p>
+                    </div>
+
+                    <!-- File Preview (Hidden initially) -->
+                    <div class="file-preview" id="filePreview" style="display: none;">
+                        <div class="file-info">
+                            <img id="previewThumb" src="" alt="Preview">
+                            <div class="file-details">
+                                <span class="file-name" id="fileName">filename.jpg</span>
+                                <span class="file-size" id="fileSize">2.5 MB</span>
+                            </div>
+                        </div>
+
+                        <div class="conversion-options" style="display:none">
+                            <!-- Hidden as it is auto-determined now -->
+                            <label>Convert to:</label>
+                            <select id="formatSelect">
+                                <!-- Options populated dynamically -->
+                            </select>
+                        </div>
+
+                        <div class="conversion-actions">
+                            <button id="convertBtn" class="btn btn-accent">Convert Now</button>
+                            <a id="downloadBtn" href="#" class="btn btn-success"
+                                style="display: none; text-align: center; margin-top: 10px;" download>
+                                <i class="fas fa-download"></i> Download Converted File
+                            </a>
+                        </div>
+                        <div class="progress-bar-container" style="display:none;">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="icon-box"><i class="fas fa-bolt"></i></div>
+                    <h3>Lightning Fast</h3>
+                    <p>Convert your files in seconds with our optimized processing engine.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box"><i class="fas fa-shield-alt"></i></div>
+                    <h3>100% Secure</h3>
+                    <p>Your privacy matters. All files are automatically deleted after 24 hours.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box"><i class="fas fa-images"></i></div>
+                    <h3>Multiple Formats</h3>
+                    <p>Support for all popular image formats ensuring high-quality output.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- History Section -->
+    <section id="history" class="history-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Conversion History</h2>
+                <button id="refreshHistory" class="btn-icon"><i class="fas fa-sync"></i></button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>Conversion</th>
+                            <th>Size Change</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination" id="pagination">
+                <!-- Pagination links -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 FileConvert. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+    <script src="assets/js/script.js?v=7_history_api"></script>
+</body>
+
+</html>

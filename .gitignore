@@ -1,0 +1,16 @@
+
+# Uploads and Conversions
+uploads/*
+!uploads/.gitkeep
+converted/*
+!converted/.gitkeep
+
+# Dependencies (if any manageable ones, but we have fpdf.php in root which is fine)
+# vendor/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
