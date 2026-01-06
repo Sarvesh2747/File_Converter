@@ -4,9 +4,17 @@ require_once '../includes/db.php';
 
 header('Content-Type: application/json');
 
+session_start();
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'Method Not Allowed']);
+    exit;
+}
+
+if (!isset($_SERVER['HTTP_X_CSRF_TOKEN']) || !isset($_SESSION['csrf_token']) || $_SERVER['HTTP_X_CSRF_TOKEN'] !== $_SESSION['csrf_token']) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Invalid CSRF Token']);
     exit;
 }
 
@@ -20,6 +28,13 @@ if (!isset($input['id']) || !isset($input['format_to'])) {
 
 $conversionId = intval($input['id']);
 $formatTo = strtolower($input['format_to']);
+
+// Input Hardening: format_to should be strictly alphanumeric
+if (!ctype_alnum($formatTo)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid format parameter']);
+    exit;
+}
 
 // Fetch conversion record
 $stmt = $conn->prepare("SELECT * FROM conversions WHERE id = ?");
@@ -324,4 +339,3 @@ if ($success) {
 }
 
 $conn->close();
-?>

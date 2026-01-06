@@ -15,6 +15,7 @@ try {
         if ($ext -match "ppt") {
             # --- PowerPoint to PDF ---
             $ppt = New-Object -ComObject PowerPoint.Application
+            $ppt.AutomationSecurity = 3 # msoAutomationSecurityForceDisable
             # $ppt.Visible = [Microsoft.Office.Core.MsoTriState]::msoTrue # Debug
             $presentation = $ppt.Presentations.Open($SourceFile, 2, 0, 0) # ReadOnly, Untitled, WithWindow=False
             
@@ -27,6 +28,7 @@ try {
         } elseif ($ext -match "doc") {
             # --- Word to PDF ---
             $word = New-Object -ComObject Word.Application
+            $word.AutomationSecurity = 3 # msoAutomationSecurityForceDisable
             $word.Visible = $false
             $doc = $word.Documents.Open($SourceFile)
             
@@ -40,6 +42,7 @@ try {
             # --- PDF to Word ---
             # Conversion happens via Word Opening PDF (Reflow)
             $word = New-Object -ComObject Word.Application
+            $word.AutomationSecurity = 3 # msoAutomationSecurityForceDisable
             $word.Visible = $false
             
             # Open PDF (might explicitly ask for confirm conversion but usually silent in automation if configured)

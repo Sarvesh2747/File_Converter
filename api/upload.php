@@ -15,6 +15,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+if (!isset($_SERVER['HTTP_X_CSRF_TOKEN']) || !isset($_SESSION['csrf_token']) || $_SERVER['HTTP_X_CSRF_TOKEN'] !== $_SESSION['csrf_token']) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Invalid CSRF Token']);
+    exit;
+}
+
 if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
     http_response_code(400);
     echo json_encode(['error' => 'No file uploaded or upload error']);
@@ -22,9 +28,25 @@ if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
 }
 
 $file = $_FILES['file'];
-$fileName = $file['name'];
+$fileName = basename($file['name']); // Sanitize input name slightly
 $fileSize = $file['size'];
 $fileTmpPath = $file['tmp_name'];
+
+// Rate Limiting (Max 100 uploads per hour per IP)
+$userIp = $_SERVER['REMOTE_ADDR'];
+$limitTime = date('Y-m-d H:i:s', strtotime('-1 hour'));
+$stmtLimit = $conn->prepare("SELECT COUNT(*) FROM conversions WHERE user_ip = ? AND upload_time > ?");
+$stmtLimit->bind_param("ss", $userIp, $limitTime);
+$stmtLimit->execute();
+$stmtLimit->bind_result($reqCount);
+$stmtLimit->fetch();
+$stmtLimit->close();
+
+if ($reqCount >= 100) {
+    http_response_code(429);
+    echo json_encode(['error' => 'Rate limit exceeded (100 uploads/hour).']);
+    exit;
+}
 
 // Validate File Size (Max 5MB)
 $maxSize = 5 * 1024 * 1024;
@@ -34,40 +56,66 @@ if ($fileSize > $maxSize) {
     exit;
 }
 
-// Validate File Type
-$allowedMimeTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'application/pdf',
-    // Office Formats
-    'application/msword', // .doc
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-    'application/vnd.ms-powerpoint', // .ppt
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation' // .pptx
-];
+// Strict MIME Type Validation
 $finfo = new finfo(FILEINFO_MIME_TYPE);
 $mimeType = $finfo->file($fileTmpPath);
 
-// Loose check for some systems where mimetype might be generic 'application/zip' for docx/pptx
-// We can double check extension if generic zip is detected, but standard mime is safer.
-// Let's rely on these standard mimes first.
+// Map MIME types to known safe extensions
+$mimeMap = [
+    'image/jpeg' => 'jpg',
+    'image/png' => 'png',
+    'image/gif' => 'gif',
+    'image/webp' => 'webp',
+    'application/pdf' => 'pdf',
+    // Office - Standard
+    'application/msword' => 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+    'application/vnd.ms-powerpoint' => 'ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'pptx',
+    // Office - Common Variations/Fallbacks
+    'application/zip' => 'zip', 
+    'application/x-zip-compressed' => 'zip',
+    'application/octet-stream' => 'bin' 
+];
 
-if (!in_array($mimeType, $allowedMimeTypes)) {
+// Special handling for Office files that appear as ZIP/Octet
+$isOffice = false;
+$ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+if (in_array($mimeType, ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'])) {
+    if (in_array($ext, ['docx', 'pptx', 'xlsx', 'doc', 'ppt'])) {
+        $isOffice = true;
+        $extension = $ext;
+    }
+}
+
+if (!array_key_exists($mimeType, $mimeMap) && !$isOffice) {
     http_response_code(400);
-    echo json_encode(['error' => 'Invalid file type. Allowed: Images, PDF, Word, PowerPoint']);
+    echo json_encode(['error' => 'Invalid file type. Detected: ' . $mimeType . ' (' . $ext . ')']);
     exit;
 }
 
-// Format Detection
-$extension = pathinfo($fileName, PATHINFO_EXTENSION);
-$formatFrom = strtolower($extension);
-if ($formatFrom == 'jpeg') $formatFrom = 'jpg';
+if (!$isOffice) {
+    // Force extension based on MIME type for standard files
+    $extension = $mimeMap[$mimeType];
+    // Map zip/bin back to original extension if it was legitimately one of those (but we only really allow office zips)
+    // The previous block handles office zips. 
+    // If we are here, it's an image or PDF.
+}
 
+// Double check: if it mapped to 'zip' or 'bin' but wasn't flagged as office, we should probably reject it 
+// unless we want to allow generic zips (which we don't).
+if (($extension === 'zip' || $extension === 'bin') && !$isOffice) {
+     http_response_code(400);
+     echo json_encode(['error' => 'Generic ZIP/Binary files not allowed. Upload Office files or Images.']);
+     exit; 
+}
 
-// Generate Unique Filename
-$uniqueName = uniqid() . '_' . time() . '.' . $extension;
+// Determine "format_from"
+$formatFrom = ($ext === 'jpeg') ? 'jpg' : $ext; // Use original extension logic for format_from to be consistent e.g. docx
+
+// Generate Unique Filename (Randomized, not based on input)
+$uniqueName = uniqid('up_', true) . '_' . time() . '.' . $extension;
 $uploadDir = '../uploads/';
 $destination = $uploadDir . $uniqueName;
 
@@ -103,4 +151,3 @@ if (move_uploaded_file($fileTmpPath, $destination)) {
 }
 
 $conn->close();
-?>

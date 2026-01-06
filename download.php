@@ -2,24 +2,53 @@
 // download.php
 require_once 'includes/db.php';
 
+session_start();
+if (!isset($_SESSION['session_id'])) {
+    die('Unauthorized access.');
+}
+
 if (!isset($_GET['id'])) {
     die('Invalid request');
 }
 
 $id = intval($_GET['id']);
+$sessionId = $_SESSION['session_id'];
 
-$stmt = $conn->prepare("SELECT converted_path, converted_filename FROM conversions WHERE id = ? AND status = 'completed'");
-$stmt->bind_param("i", $id);
+// Check ownership (Session ID match)
+$stmt = $conn->prepare("SELECT converted_path, converted_filename FROM conversions WHERE id = ? AND session_id = ? AND status = 'completed'");
+$stmt->bind_param("is", $id, $sessionId);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    die('File not found or expired.');
+    http_response_code(403);
+    die('File not found or access denied.');
 }
 
 $row = $result->fetch_assoc();
 $filepath = $row['converted_path'];
 $filename = $row['converted_filename'];
+
+// Path Traversal Protection
+$baseDir = realpath(__DIR__ . '/converted');
+// Note: $filepath in DB is relative e.g., 'converted/file.pdf'. 
+// Dependent on how it was saved. In api/convert.php: 'converted/' . basename($convertedPath)
+// So it should be safe, but let's verify.
+$realPath = realpath($filepath);
+
+if ($realPath === false || strpos($realPath, $baseDir) !== 0) {
+    // If running in root, 'converted' is in root.
+    // If logic changes, this keeps it safe.
+    // Also handle if file is missing (realpath returns false)
+    if (!file_exists($filepath)) {
+         http_response_code(404);
+         die('File missing on server.');
+    }
+    // Deep check
+    if (strpos(realpath($filepath), realpath('converted')) !== 0) {
+        die('Security violation: Invalid file path.');
+    }
+}
 
 if (file_exists($filepath)) {
     // Determine MIME type

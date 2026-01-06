@@ -25,6 +25,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let uploadedFileId = null;
     let currentMode = null; // e.g. 'jpg-to-pdf'
     let currentAccept = '*'; // e.g. '.pdf'
+    let csrfToken = '';
+
+    // Init Session & CSRF
+    // Init Session & CSRF
+    const initSession = async () => {
+        try {
+            const res = await fetch('api/init.php');
+            const data = await res.json();
+            csrfToken = data.csrf_token;
+            console.log('Session initialized:', csrfToken ? 'Success' : 'Empty');
+        } catch (err) {
+            console.error('Failed to init session', err);
+        }
+    };
+    initSession();
+
 
     // --- Mode Selection Utilities ---
     document.querySelectorAll('.tool-card').forEach(card => {
@@ -171,10 +187,16 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.onload = (e) => { previewThumb.src = e.target.result; };
             reader.readAsDataURL(file);
         } else {
-            // Generic icons based on format
-            if (file.name.endsWith('.pdf')) previewThumb.src = 'https://via.placeholder.com/60/FF0000/FFFFFF?text=PDF';
-            else if (file.name.match(/\.(doc|docx)$/)) previewThumb.src = 'https://via.placeholder.com/60/2B579A/FFFFFF?text=WORD';
-            else previewThumb.src = 'https://via.placeholder.com/60/CCCCCC/000000?text=FILE';
+            // Generic icons based on format (Using simple embedded SVG data URIs to avoid external deps)
+            if (file.name.endsWith('.pdf')) {
+                previewThumb.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MCA1MCI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjZTMzIi8+PHRleHQgeT0iNTA1IiB4PSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IndoaXRlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiI+UERGPC90ZXh0Pjwvc3ZnPg==';
+            } else if (file.name.match(/\.(doc|docx)$/)) {
+                previewThumb.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MCA1MCI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMmIwIi8+PHRleHQgeT0iNTA1IiB4PSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IndoaXRlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiI+RE9DPC90ZXh0Pjwvc3ZnPg==';
+            } else if (file.name.match(/\.(ppt|pptx)$/)) {
+                previewThumb.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MCA1MCI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjZDQyIi8+PHRleHQgeT0iNTA1IiB4PSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IndoaXRlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiI+UFBUPC90ZXh0Pjwvc3ZnPg==';
+            } else {
+                previewThumb.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MCA1MCI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjY2NjIi8+PHRleHQgeT0iNTA1IiB4PSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IndoaXRlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiI+RklMRTwvdGV4dD48L3N2Zz4=';
+            }
         }
 
         // Determine Target Selection automatically or prepopulate
@@ -219,11 +241,19 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', file);
 
         try {
+            if (!csrfToken) {
+                await initSession(); // Retry init if missing
+                if (!csrfToken) throw new Error('Session initialization failed. Please refresh.');
+            }
+
             convertBtn.disabled = true;
             convertBtn.textContent = 'Uploading...';
 
             const response = await fetch('api/upload.php', {
                 method: 'POST',
+                headers: {
+                    'X-Csrf-Token': csrfToken
+                },
                 body: formData
             });
 
@@ -275,7 +305,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('api/convert.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Csrf-Token': csrfToken
+                },
                 body: JSON.stringify({
                     id: uploadedFileId,
                     format_to: targetFormat
